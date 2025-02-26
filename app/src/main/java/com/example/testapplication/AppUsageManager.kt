@@ -1,22 +1,26 @@
 package com.example.testapplication
+import android.app.Activity
 import android.app.AppOpsManager
-import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
-import androidx.annotation.RequiresApi
+import android.util.Log
+import androidx.core.app.ActivityCompat
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
+
 
 class AppUsageManager(private val context: Context) {
     //Initialize app usage manager with context
     private val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     private val packageManager = context.packageManager
-    // Check if we have permission
+
+    // Check if we have permissions to access app info
     fun hasUsageStatsPermission(): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
 
@@ -30,12 +34,25 @@ class AppUsageManager(private val context: Context) {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
+//    fun hasPackagePermission(): Boolean {
+//        return context.checkSelfPermission("android.permission.QUERY_ALL_PACKAGES") ==
+//                PackageManager.PERMISSION_GRANTED
+//    }
+
     //Request permission
     fun requestUsageStatsPermission(){
         val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
     }
+//    fun requestPackagePermission(activity: Activity, requestCode: Int) {
+//        val intent = Intent(Settings.)
+//        ActivityCompat.requestPermissions(
+//                activity,
+//                arrayOf("android.permission.QUERY_ALL_PACKAGES"),
+//                requestCode
+//            )
+//    }
 
     //Get usage stats for last 24 hours
     fun getAppUsageStats(): List<AppUsageInfo>{
@@ -44,14 +61,14 @@ class AppUsageManager(private val context: Context) {
         }
         //Define time interval & query for data
         val calendar = Calendar.getInstance()
-        val endtime = calendar.timeInMillis
+        val endTime = calendar.timeInMillis
         calendar.add(Calendar.DAY_OF_MONTH, -1) //Last 24h
         val startTime = calendar.timeInMillis
 
         val usageStats = usageStatsManager.queryUsageStats(
             UsageStatsManager.INTERVAL_DAILY,
             startTime,
-            endtime
+            endTime
         )
         //Filter data and show in app
         return usageStats.filter{it.totalTimeInForeground>0}.map { stats ->
@@ -59,7 +76,8 @@ class AppUsageManager(private val context: Context) {
                 packageName = stats.packageName,
                 appName = getAppName(stats.packageName),
                 timeInForeground = stats.totalTimeInForeground,
-                lastTimeUsed = stats.lastTimeUsed
+                lastTimeUsed = stats.lastTimeUsed,
+                grantedPermissions = getGrantedPermissions(stats.packageName)
             )
         }.sortedByDescending { it.lastTimeUsed }
     }
@@ -67,13 +85,48 @@ class AppUsageManager(private val context: Context) {
     // Get app name from package name
     private fun getAppName (packageName:String):String {
         return try {
-            val theAppInfo = packageManager.getApplicationInfo(packageName,0)
+            // Set multiple flags to match more packages
+            val flags = PackageManager.GET_META_DATA or PackageManager.MATCH_UNINSTALLED_PACKAGES
+
+            val theAppInfo = packageManager.getApplicationInfo(packageName, flags)
             packageManager.getApplicationLabel(theAppInfo).toString()
         }
         catch (e: PackageManager.NameNotFoundException){
+            Log.e("AppNameRetrieval", "Package $packageName name not found",e )
+            packageName
+        } catch (e: Exception) {
+            Log.e("AppNameRetrieval", "Error while getting app name for $packageName: ${e.message}", e)
             packageName
         }
+
     }
+
+    // Get app permissions from package name
+    private fun getGrantedPermissions (packageName:String):List<String> {
+        return try {
+            val pkgInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            val grantedPermissions = mutableListOf<String>()
+            // Check if app has permissions
+            if(pkgInfo.requestedPermissions != null && pkgInfo.requestedPermissionsFlags != null){
+                // Check if permission is granted for each permission
+                for(index in pkgInfo.requestedPermissions!!.indices){
+                    if ((pkgInfo.requestedPermissionsFlags!![index] and PackageInfo.REQUESTED_PERMISSION_GRANTED)!=0) {
+                        grantedPermissions.add(pkgInfo.requestedPermissions!![index])
+                    }
+                }
+            }
+            grantedPermissions
+        }
+        catch (e: PackageManager.NameNotFoundException ){
+            Log.e("PermissionsRetrieval", "Package $packageName not found",e )
+            emptyList()
+        }
+        catch (e: Exception ){
+            Log.e("PermissionsRetrieval", "Error while getting permissions for $packageName : ${e.message}",e )
+            emptyList()
+        }
+    }
+
 }
 
 //Data class to hold app usage info
@@ -81,7 +134,8 @@ data class AppUsageInfo(
     val packageName: String,
     val appName: String,
     val timeInForeground: Long,
-    val lastTimeUsed: Long
+    val lastTimeUsed: Long,
+    val grantedPermissions : List<String>
 ){
     //Convert time to hours and minutes
     fun getFormattedTime(): String {

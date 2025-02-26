@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         TopAppBar(
-                            title = { Text("App Usage Stats") },
+                            title = { Text("App Access Tracker") },
                             colors = TopAppBarDefaults.topAppBarColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // Apps List
+                        // List apps & their info
                         if (appUsageStats.value.isEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -155,6 +155,17 @@ fun ViewAppAsCard(appUsageStats: AppUsageInfo) {
                     text = "Last usage was "+appUsageStats.getFormattedLastTimeUsed(),
                     fontSize = 14.sp
                 )
+            }
+            for(item in appUsageStats.grantedPermissions){
+                Row(
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+
+                    Text(
+                        text = item,
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }
