@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TestApplication"
+rootProject.name = "App Access Tracker"
 include(":app")

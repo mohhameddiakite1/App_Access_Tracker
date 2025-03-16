@@ -2,7 +2,6 @@ package com.example.testapplication
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,19 +9,24 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -31,10 +35,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.FlowRow
 import com.example.testapplication.ui.theme.TestApplicationTheme
 
 class MainActivity : ComponentActivity() {
@@ -95,7 +100,6 @@ class MainActivity : ComponentActivity() {
                                 Text("Clear Data")
                             }
                         }
-
                         // List apps & their info
                         if (appUsageStats.value.isEmpty()) {
                             Box(
@@ -116,6 +120,7 @@ class MainActivity : ComponentActivity() {
                                 items(appUsageStats.value) {
                                     ViewAppAsCard(it)
                                 }
+
                             }
                         }
                     }
@@ -125,48 +130,148 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ViewAppAsCard(appUsageStats: AppUsageInfo) {
+    // Track if permission are expanded or not
+    val expandedPermissions = remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // Display app name
             Text(
-                modifier = Modifier.clickable {
-                    Log.d("App name", "Name tapped!")
-                },
                 text = appUsageStats.appName,
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
+                fontSize = 20.sp,
+                color = Color.Black
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Display usage data
             Row(
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Duration: "+appUsageStats.getFormattedTime(),
-                    fontSize = 14.sp
+                    text = "Duration: " + appUsageStats.getFormattedTime(),
+                    fontSize = 14.sp,
+                    color = Color.DarkGray,
+                    modifier = Modifier.weight(1f) // Make the space consistent
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+
                 Text(
-                    text = "Last usage was "+appUsageStats.getFormattedLastTimeUsed(),
-                    fontSize = 14.sp
+                    text = "Last usage was " + appUsageStats.getFormattedLastTimeUsed(),
+                    fontSize = 14.sp,
+                    color = Color.DarkGray,
+                    modifier = Modifier.weight(1f) // Make the space consistent
                 )
             }
-            for(item in appUsageStats.grantedPermissions){
-                Row(
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
 
+            // Separate app info and permissions sections
+            if (appUsageStats.grantedPermissions.isNotEmpty()) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+
+                // Display permissions
+                Text(
+                    text = "Permissions:",
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    color = Color.DarkGray
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val permissionsToShow = if (expandedPermissions.value || appUsageStats.grantedPermissions.size <= 3) {
+                    appUsageStats.grantedPermissions
+                } else {
+                    appUsageStats.grantedPermissions.take(3)
+                }
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    permissionsToShow.forEach { permission ->
+                        val formattedPermissionName = FormatPermissionName(permission)
+                        PermissionWrapper(formattedPermissionName)
+                    }
+                }
+
+                if (appUsageStats.grantedPermissions.size > 3) {
                     Text(
-                        text = item,
-                        fontSize = 14.sp
+                        text = if (expandedPermissions.value) "Show less" else "See more...",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .clickable {
+                                expandedPermissions.value = !expandedPermissions.value
+                            }
                     )
                 }
+            } else {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+
+                Text(
+                    text = "No permissions granted",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
+    }
+}
+
+@Composable
+fun FormatPermissionName(permission: String): String {
+    // Remove the common prefix
+    val withoutPrefix = when {
+        permission.startsWith("android.permission.") ->
+            permission.removePrefix("android.permission.")
+        permission.contains("routines.ROUTINES_ACTIONS") ->
+            "Access to Routines"
+        permission.contains("settings") ->
+            permission.substringAfterLast(".")
+        else -> permission.substringAfterLast(".")
+    }
+
+    // Lowercase some characters
+    return withoutPrefix
+        .split("_")
+        .joinToString(" ") { word ->
+            word.lowercase().replaceFirstChar { it.uppercase() }
+        }
+}
+@Composable
+fun PermissionWrapper(permission: String){
+    Surface(
+        modifier = Modifier.padding(end = 4.dp, bottom = 4.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFFF0F0F0) // Light gray background for rounded wrapper
+    ) {
+        Text(
+            text = permission,
+            fontSize = 12.sp,
+            color = Color.DarkGray,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
