@@ -15,7 +15,6 @@ The project is developed in **Kotlin**, utilizes **Jetpack Compose** for UI, and
 ## Requirements
 
 - **[Android Studio](https://developer.android.com/studio)** (Latest version recommended)
-- **Kotlin**
 - **Language**: Kotlin
 - **UI Framework**: Jetpack Compose
 - **Minimum SDK**: 30
