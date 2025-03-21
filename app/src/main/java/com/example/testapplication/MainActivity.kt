@@ -40,6 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import com.example.testapplication.ui.theme.TestApplicationTheme
 
 class MainActivity : ComponentActivity() {
@@ -63,8 +68,8 @@ class MainActivity : ComponentActivity() {
                         TopAppBar(
                             title = { Text("App Access Tracker") },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                containerColor = Color(0xFF2196F3),
+                                titleContentColor = Color.White
                             )
                         )
                     }
@@ -79,26 +84,38 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             Button(
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White, contentColor = Color(0xFF2196F3)),
                                 onClick = {
                                     if (!appUsageManager.hasUsageStatsPermission()) {
                                         appUsageManager.requestUsageStatsPermission()
                                     }
                                     appUsageStats.value = appUsageManager.getAppUsageStats()
                                 }
+                            ) { Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text("Get Data")
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh"
+                                )
+                                Text("Refresh")
+                            }
                             }
 
-                            Button(
-                                onClick = {
-                                    appUsageStats.value = emptyList()
-                                }
-                            ) {
-                                Text("Clear Data")
-                            }
+//                            Button(
+//                                onClick = {
+//                                    appUsageStats.value = emptyList()
+//                                }
+//                            ) {
+//                                Text("Clear Data")
+//                            }
                         }
                         // List apps & their info
                         if (appUsageStats.value.isEmpty()) {
@@ -118,7 +135,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(appUsageStats.value) {
-                                    ViewAppAsCard(it)
+                                    ViewAppAsCard(it, appUsageManager)
                                 }
 
                             }
@@ -132,7 +149,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ViewAppAsCard(appUsageStats: AppUsageInfo) {
+fun ViewAppAsCard(appUsageStats: AppUsageInfo, _appUsageManager: AppUsageManager) {
     // Track if permission are expanded or not
     val expandedPermissions = remember { mutableStateOf(false) }
 
@@ -140,6 +157,7 @@ fun ViewAppAsCard(appUsageStats: AppUsageInfo) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         )
@@ -157,6 +175,24 @@ fun ViewAppAsCard(appUsageStats: AppUsageInfo) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Display manage permissions button
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = {
+                        _appUsageManager.OpenAppSettings(appUsageStats.packageName)
+                    },
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2196F3)
+                    )
+                ) {
+                    Text("Manage")
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Display usage data
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -168,7 +204,11 @@ fun ViewAppAsCard(appUsageStats: AppUsageInfo) {
                     color = Color.DarkGray,
                     modifier = Modifier.weight(1f) // Make the space consistent
                 )
-
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
                     text = "Last usage was " + appUsageStats.getFormattedLastTimeUsed(),
                     fontSize = 14.sp,

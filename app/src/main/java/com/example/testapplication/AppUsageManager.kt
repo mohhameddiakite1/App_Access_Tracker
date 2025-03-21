@@ -1,16 +1,14 @@
 package com.example.testapplication
-import android.app.Activity
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.os.Build
+import android.net.Uri
 import android.os.Process
 import android.provider.Settings
 import android.util.Log
-import androidx.core.app.ActivityCompat
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -125,6 +123,14 @@ class AppUsageManager(private val context: Context) {
             Log.e("PermissionsRetrieval", "Error while getting permissions for $packageName : ${e.message}",e )
             emptyList()
         }
+    }
+    fun OpenAppSettings(appPackageName: String){
+        //Show the settings page
+        val settings_intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        //Find app URI(location) & open settings options
+        val _uri = Uri.fromParts("package", appPackageName, null)
+        settings_intent.data = _uri
+        context.startActivity(settings_intent)
     }
 
 }
